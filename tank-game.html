@@ -24,6 +24,10 @@
             color: #e8f5e9;
             pointer-events: none;
             user-select: none;
+            background: rgba(0,0,0,0.88);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px 16px;
         }
         #level-display {
             font-size: 22px;
@@ -170,9 +174,9 @@ window.addEventListener('resize', () => {
 // ════════════════════════════════════════════════
 //  WORLD
 // ════════════════════════════════════════════════
-const WORLD_SIZE  = 6000;   // larger map
+const WORLD_SIZE  = 6000;
 const TILE_SIZE   = 60;
-const BORDER_SIZE = 120;    // wall border thickness in pixels
+const BORDER_SIZE = 120;
 
 // ════════════════════════════════════════════════
 //  STATIC BACKGROUND
@@ -183,11 +187,9 @@ const bgCtx    = bgCanvas.getContext('2d');
 function buildStaticBackground() {
     bgCanvas.width  = WORLD_SIZE;
     bgCanvas.height = WORLD_SIZE;
-
     const cols = Math.ceil(WORLD_SIZE / TILE_SIZE);
     const rows = Math.ceil(WORLD_SIZE / TILE_SIZE);
 
-    // Grass tiles
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const rand = Math.sin(c * 127.1 + r * 311.7) * 43758.5453;
@@ -203,7 +205,6 @@ function buildStaticBackground() {
         }
     }
 
-    // Subtle grid
     bgCtx.strokeStyle = 'rgba(0,0,0,0.07)';
     bgCtx.lineWidth   = 0.6;
     for (let r = 0; r < rows; r++) {
@@ -212,43 +213,33 @@ function buildStaticBackground() {
         }
     }
 
-    // ── Wall border ──
-    // Outer stone fill
     const wallColor   = '#6b6b6b';
     const mortarColor = '#4a4a4a';
     const stoneLight  = '#7a7a7a';
     const stoneDark   = '#555555';
     const brickW = 40, brickH = 20;
 
-    // Draw all 4 border strips with pixelart brick pattern
     const strips = [
-        { x: 0,                    y: 0,                    w: WORLD_SIZE,  h: BORDER_SIZE },   // top
-        { x: 0,                    y: WORLD_SIZE-BORDER_SIZE, w: WORLD_SIZE, h: BORDER_SIZE },  // bottom
-        { x: 0,                    y: BORDER_SIZE,          w: BORDER_SIZE, h: WORLD_SIZE - BORDER_SIZE*2 }, // left
-        { x: WORLD_SIZE-BORDER_SIZE, y: BORDER_SIZE,        w: BORDER_SIZE, h: WORLD_SIZE - BORDER_SIZE*2 }, // right
+        { x:0,                     y:0,                     w:WORLD_SIZE,  h:BORDER_SIZE },
+        { x:0,                     y:WORLD_SIZE-BORDER_SIZE, w:WORLD_SIZE, h:BORDER_SIZE },
+        { x:0,                     y:BORDER_SIZE,            w:BORDER_SIZE,h:WORLD_SIZE-BORDER_SIZE*2 },
+        { x:WORLD_SIZE-BORDER_SIZE,y:BORDER_SIZE,            w:BORDER_SIZE,h:WORLD_SIZE-BORDER_SIZE*2 },
     ];
 
     for (const s of strips) {
-        // Base fill
         bgCtx.fillStyle = wallColor;
         bgCtx.fillRect(s.x, s.y, s.w, s.h);
-
-        // Brick rows
         const rowsInStrip = Math.ceil(s.h / brickH) + 1;
         const colsInStrip = Math.ceil(s.w / brickW) + 2;
         for (let row = 0; row < rowsInStrip; row++) {
             const offset = (row % 2) * (brickW / 2);
             for (let col = -1; col < colsInStrip; col++) {
-                const bx = s.x + col * brickW - offset;
-                const by = s.y + row * brickH;
-
-                // Randomise brick shade slightly
+                const bx   = s.x + col * brickW - offset;
+                const by   = s.y + row * brickH;
                 const seed = Math.sin(bx * 0.3 + by * 0.7) * 100;
                 const fr   = seed - Math.floor(seed);
                 bgCtx.fillStyle = fr < 0.3 ? stoneDark : fr < 0.7 ? wallColor : stoneLight;
                 bgCtx.fillRect(bx + 1, by + 1, brickW - 2, brickH - 2);
-
-                // Mortar lines
                 bgCtx.strokeStyle = mortarColor;
                 bgCtx.lineWidth   = 1.5;
                 bgCtx.strokeRect(bx + 1, by + 1, brickW - 2, brickH - 2);
@@ -256,19 +247,12 @@ function buildStaticBackground() {
         }
     }
 
-    // Inner edge shadow line
     bgCtx.strokeStyle = 'rgba(0,0,0,0.55)';
     bgCtx.lineWidth   = 6;
-    bgCtx.strokeRect(BORDER_SIZE, BORDER_SIZE,
-                     WORLD_SIZE - BORDER_SIZE * 2,
-                     WORLD_SIZE - BORDER_SIZE * 2);
-
-    // Inner bright edge highlight
+    bgCtx.strokeRect(BORDER_SIZE, BORDER_SIZE, WORLD_SIZE-BORDER_SIZE*2, WORLD_SIZE-BORDER_SIZE*2);
     bgCtx.strokeStyle = 'rgba(255,255,255,0.08)';
     bgCtx.lineWidth   = 2;
-    bgCtx.strokeRect(BORDER_SIZE + 4, BORDER_SIZE + 4,
-                     WORLD_SIZE - BORDER_SIZE * 2 - 8,
-                     WORLD_SIZE - BORDER_SIZE * 2 - 8);
+    bgCtx.strokeRect(BORDER_SIZE+4, BORDER_SIZE+4, WORLD_SIZE-BORDER_SIZE*2-8, WORLD_SIZE-BORDER_SIZE*2-8);
 }
 buildStaticBackground();
 
@@ -278,8 +262,7 @@ function drawBackground() {
         camera.x - canvas.width  / 2,
         camera.y - canvas.height / 2,
         canvas.width, canvas.height,
-        0, 0,
-        canvas.width, canvas.height
+        0, 0, canvas.width, canvas.height
     );
 }
 
@@ -287,24 +270,20 @@ function drawBackground() {
 //  CAMERA
 // ════════════════════════════════════════════════
 const camera = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
-
 function worldToScreen(wx, wy) {
-    return {
-        x: wx - camera.x + canvas.width  / 2,
-        y: wy - camera.y + canvas.height / 2
-    };
+    return { x: wx - camera.x + canvas.width/2, y: wy - camera.y + canvas.height/2 };
 }
 
 // ════════════════════════════════════════════════
 //  INPUT
 // ════════════════════════════════════════════════
-const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+const mouse = { x: canvas.width/2, y: canvas.height/2, down: false };
 canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-canvas.addEventListener('mousedown', e => { if (e.button === 0) mouse.down = true; });
-canvas.addEventListener('mouseup',   e => { if (e.button === 0) mouse.down = false; });
+canvas.addEventListener('mousedown', e => { if (e.button===0) mouse.down = true; });
+canvas.addEventListener('mouseup',   e => { if (e.button===0) mouse.down = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
-    if ((e.key === 'q' || e.key === 'Q') && !weaponPickOpen) tryShootAll();
+    if ((e.key==='q'||e.key==='Q') && !weaponPickOpen) tryShootAll();
     const n = parseInt(e.key);
     if (n >= 1 && n <= playerWeapons.length) activeWeaponIndex = n - 1;
 });
@@ -314,14 +293,14 @@ document.addEventListener('keydown', e => {
 // ════════════════════════════════════════════════
 const WEAPON_DEFS = {
     main_cannon: {
-        id:'main_cannon', name:'Main Cannon', icon:'🎯',
+        id:'main_cannon', name:'Cannon', icon:'🎯',
         desc:'Balanced cannon.\nSteady fire rate.',
         cooldown:280, damage:1, bulletSpeed:11, bulletRadius:5,
         bulletColor:'#fffde7', range:80, spread:0, count:1, type:'bullet'
     },
     railgun: {
         id:'railgun', name:'Railgun', icon:'⚡',
-        desc:'High damage.\nSlow reload.\nPierces enemies.',
+        desc:'High damage beam.\nSlow reload.\nPierces all enemies.',
         cooldown:1200, damage:5, bulletSpeed:28, bulletRadius:4,
         bulletColor:'#00e5ff', range:320, spread:0, count:1, type:'rail'
     },
@@ -333,7 +312,7 @@ const WEAPON_DEFS = {
         explosionRadius:80, type:'rocket'
     },
     machinegun: {
-        id:'machinegun', name:'Machine Gun', icon:'🔫',
+        id:'machinegun', name:'MachineGun', icon:'🔫',
         desc:'Fast fire rate.\nSlightly weaker per shot.',
         cooldown:120, damage:0.6, bulletSpeed:13, bulletRadius:3,
         bulletColor:'#fff176', range:70, spread:0.06, count:1, type:'bullet'
@@ -342,7 +321,7 @@ const WEAPON_DEFS = {
         id:'flak', name:'Flak Gun', icon:'💥',
         desc:'Shotgun spread.\nShort range shrapnel.',
         cooldown:700, damage:0.8, bulletSpeed:9, bulletRadius:3,
-        bulletColor:'#ef9a9a', range:35, spread:0.35, count:7, type:'flak'
+        bulletColor:'#607d8b', range:35, spread:0.35, count:7, type:'flak'
     }
 };
 
@@ -350,49 +329,51 @@ const WEAPON_DEFS = {
 //  PLAYER
 // ════════════════════════════════════════════════
 const player = {
-    x: WORLD_SIZE / 2, y: WORLD_SIZE / 2,
+    x: WORLD_SIZE/2, y: WORLD_SIZE/2,
     angle: 0, speed: 0, maxSpeed: 3.5,
-    bodyRadius: 22, hp: 100, maxHp: 100
+    bodyRadius: 22, hp: 100, maxHp: 100,
+    trackFrame: 0   // for track animation
 };
 
-let playerWeapons     = [{ ...WEAPON_DEFS.main_cannon, lastShot: 0 }];
+let playerWeapons     = [{ ...WEAPON_DEFS.main_cannon, lastShot:0, stackCount:1 }];
 let activeWeaponIndex = 0;
 let weaponPickOpen    = false;
 
 function updatePlayer() {
-    const cx = canvas.width / 2, cy = canvas.height / 2;
-    const dx = mouse.x - cx,     dy = mouse.y - cy;
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const dx = mouse.x - cx,   dy = mouse.y - cy;
     const dist = Math.hypot(dx, dy);
     player.angle = Math.atan2(dy, dx);
     const deadzone = 10, fullSpeed = 120;
     player.speed = dist > deadzone
-        ? Math.min((dist - deadzone) / (fullSpeed - deadzone), 1) * player.maxSpeed
-        : 0;
+        ? Math.min((dist-deadzone)/(fullSpeed-deadzone),1) * player.maxSpeed : 0;
 
     const nx = player.x + Math.cos(player.angle) * player.speed;
     const ny = player.y + Math.sin(player.angle) * player.speed;
-    // Clamp inside play area (inside border)
-    player.x = Math.max(BORDER_SIZE + 30, Math.min(WORLD_SIZE - BORDER_SIZE - 30, nx));
-    player.y = Math.max(BORDER_SIZE + 30, Math.min(WORLD_SIZE - BORDER_SIZE - 30, ny));
+    player.x = Math.max(BORDER_SIZE+30, Math.min(WORLD_SIZE-BORDER_SIZE-30, nx));
+    player.y = Math.max(BORDER_SIZE+30, Math.min(WORLD_SIZE-BORDER_SIZE-30, ny));
     camera.x  = player.x;
     camera.y  = player.y;
+
+    // Animate tracks when moving
+    if (player.speed > 0.1) player.trackFrame += player.speed * 0.4;
 }
 
 // ════════════════════════════════════════════════
-//  DRAW TANK  — pixel-art white style
+//  TANK DRAWING
 // ════════════════════════════════════════════════
-// Pixel-art palette (white/light grey tank)
 const T = {
-    outline  : '#1a1a1a',
+    outline:   '#1a1a1a',
     darkPlate: '#b0b8c0',
-    midPlate : '#d4dce4',
+    midPlate:  '#d4dce4',
     lightPlate:'#eef2f6',
-    white    : '#f5f8fa',
-    shadow   : '#8898a8',
-    accent   : '#7ecfff',   // blue accent detail
+    white:     '#f5f8fa',
+    shadow:    '#8898a8',
+    accent:    '#7ecfff',
     trackDark: '#2a2a2a',
-    trackMid : '#444444',
+    trackMid:  '#444444',
     trackLight:'#666666',
+    trackSeg:  '#555555',
 };
 
 function px(ctx, x, y, w, h, color) {
@@ -401,7 +382,7 @@ function px(ctx, x, y, w, h, color) {
 }
 
 function drawTank() {
-    const { x: sx, y: sy } = worldToScreen(player.x, player.y);
+    const { x:sx, y:sy } = worldToScreen(player.x, player.y);
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(player.angle);
@@ -411,164 +392,208 @@ function drawTank() {
     ctx.globalAlpha = 0.18;
     ctx.fillStyle   = '#000';
     ctx.beginPath();
-    ctx.ellipse(5, 5, 32, 25, 0, 0, Math.PI * 2);
+    ctx.ellipse(5, 5, 32, 25, 0, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
 
-    // ── Tracks ──
-    // Left track
-    px(ctx, -28, -28, 56, 11, T.trackDark);
-    for (let i = 0; i < 7; i++) px(ctx, -26 + i*8, -27, 6, 9, T.trackMid);
-    px(ctx, -28, -28, 56, 2,  T.trackLight);   // top highlight
+    // ── Animated tracks ──
+    drawTrack(ctx, -28, -28, 56, 11);   // left track
+    drawTrack(ctx, -28,  17, 56, 11);   // right track
 
-    // Right track
-    px(ctx, -28, 17, 56, 11, T.trackDark);
-    for (let i = 0; i < 7; i++) px(ctx, -26 + i*8, 18, 6, 9, T.trackMid);
-    px(ctx, -28, 17, 56, 2,  T.trackLight);
+    // ── Hull ──
+    px(ctx, -24,-17, 48,34, T.outline);
+    px(ctx, -23,-16, 46,32, T.darkPlate);
+    px(ctx, -21,-14, 42,28, T.midPlate);
+    px(ctx,  12,-14, 11,28, T.lightPlate);
+    px(ctx, -23,-14,  8,28, T.shadow);
+    px(ctx, -23, -1, 46, 2, T.outline);
+    px(ctx,   4,-14,  2,28, T.outline);
 
-    // ── Hull base ──
-    px(ctx, -24, -17, 48, 34, T.outline);      // outline
-    px(ctx, -23, -16, 46, 32, T.darkPlate);    // dark base
-
-    // Hull panels
-    px(ctx, -21, -14, 42, 28, T.midPlate);
-    // Front slope (right side = forward)
-    px(ctx, 12, -14, 11, 28, T.lightPlate);
-    // Rear panel
-    px(ctx, -23, -14, 8, 28, T.shadow);
-
-    // Pixel detail lines on hull
-    px(ctx, -23, -1, 46, 2, T.outline);        // horizontal centre seam
-    px(ctx, 4,  -14, 2, 28, T.outline);        // vertical panel seam
-
-    // Rivets / bolts — small 2x2 squares
-    const rivets = [[-19,-12],[-19,10],[20,-12],[20,10],[6,-12],[6,10]];
-    for (const [rx,ry] of rivets) {
+    // Rivets
+    for (const [rx,ry] of [[-19,-12],[-19,10],[20,-12],[20,10],[6,-12],[6,10]]) {
         px(ctx, rx, ry, 3, 3, T.lightPlate);
         px(ctx, rx+1, ry+1, 1, 1, T.white);
     }
 
-    // Rear exhaust vents
+    // Exhaust vents
     for (let i = 0; i < 3; i++) {
-        px(ctx, -23, -12 + i*9, 5, 6, T.outline);
-        px(ctx, -22, -11 + i*9, 3, 4, T.trackMid);
+        px(ctx, -23,-12+i*9, 5,6, T.outline);
+        px(ctx, -22,-11+i*9, 3,4, T.trackMid);
     }
 
     // Front armour lip
-    px(ctx, 20, -16, 4, 32, T.lightPlate);
-    px(ctx, 22, -16, 2, 32, T.white);
+    px(ctx, 20,-16, 4,32, T.lightPlate);
+    px(ctx, 22,-16, 2,32, T.white);
 
     // ── Turret ring ──
-    px(ctx, -12, -12, 24, 24, T.outline);
-    px(ctx, -11, -11, 22, 22, T.shadow);
-    px(ctx, -10, -10, 20, 20, T.midPlate);
-    // ring highlight
-    px(ctx, -10, -10, 20, 4,  T.lightPlate);
-    px(ctx, -10, -10, 4, 20,  T.lightPlate);
+    px(ctx, -12,-12, 24,24, T.outline);
+    px(ctx, -11,-11, 22,22, T.shadow);
+    px(ctx, -10,-10, 20,20, T.midPlate);
+    px(ctx, -10,-10, 20, 4, T.lightPlate);
+    px(ctx, -10,-10,  4,20, T.lightPlate);
 
     // ── Turret body ──
-    px(ctx, -8, -9, 22, 18, T.outline);
-    px(ctx, -7, -8, 20, 16, T.midPlate);
-    px(ctx, -7, -8, 20, 5,  T.lightPlate);  // top highlight
-    px(ctx, -7, -8, 5, 16,  T.lightPlate);  // left highlight
-    // Hatch circle (pixel style = small square)
-    px(ctx, -2, -3, 8, 6, T.outline);
-    px(ctx, -1, -2, 6, 4, T.darkPlate);
-    px(ctx, -1, -2, 6, 2, T.shadow);
-    // Accent stripe
-    px(ctx, -7, 2, 20, 3, T.accent);
+    px(ctx,  -8, -9, 22,18, T.outline);
+    px(ctx,  -7, -8, 20,16, T.midPlate);
+    px(ctx,  -7, -8, 20, 5, T.lightPlate);
+    px(ctx,  -7, -8,  5,16, T.lightPlate);
+    px(ctx,  -2, -3,  8, 6, T.outline);
+    px(ctx,  -1, -2,  6, 4, T.darkPlate);
+    px(ctx,  -1, -2,  6, 2, T.shadow);
+    px(ctx,  -7,  2, 20, 3, T.accent);
 
-    // ── Weapon barrels — always forward (right = +x) ──
+    // ── Weapon visuals ──
     drawWeaponBarrels(ctx);
 
     ctx.restore();
 
-    // HP bar
-    drawBar(sx, sy - 46, 56, 7, player.hp / player.maxHp, '#ef5350', '#b71c1c');
+    drawBar(sx, sy-46, 56, 7, player.hp/player.maxHp, '#ef5350', '#b71c1c');
+}
+
+function drawTrack(ctx, tx, ty, tw, th) {
+    // Track base
+    px(ctx, tx, ty, tw, th, T.trackDark);
+
+    // Animated segments — scroll offset based on trackFrame
+    const segW   = 8;
+    const offset = Math.round(player.trackFrame % segW);
+    const count  = Math.ceil(tw / segW) + 2;
+
+    ctx.save();
+    // Clip to track bounds
+    ctx.beginPath();
+    ctx.rect(tx, ty, tw, th);
+    ctx.clip();
+
+    for (let i = -1; i < count; i++) {
+        const sx = tx + i * segW - offset;
+        // Alternate segment shading
+        const shade = (i % 2 === 0) ? T.trackMid : T.trackSeg;
+        px(ctx, sx+1, ty+1, segW-2, th-2, shade);
+        // Segment border
+        ctx.strokeStyle = T.trackDark;
+        ctx.lineWidth   = 0.8;
+        ctx.strokeRect(Math.round(sx+1), Math.round(ty+1), segW-2, th-2);
+    }
+
+    // Top highlight strip
+    px(ctx, tx, ty, tw, 2, T.trackLight);
+    // Bottom shadow strip
+    px(ctx, tx, ty+th-2, tw, 2, '#1a1a1a');
+
+    ctx.restore();
+
+    // Wheel hubs over track ends
+    for (const wx of [tx+5, tx+tw/2, tx+tw-5]) {
+        px(ctx, wx-4, ty+1, 8, th-2, T.outline);
+        px(ctx, wx-3, ty+2, 6, th-4, T.darkPlate);
+        px(ctx, wx-2, ty+3, 4, 2,   T.lightPlate);
+    }
 }
 
 function drawWeaponBarrels(ctx) {
-    // Each weapon adds visual elements; all shoot along +x axis (forward)
-    const hasRail = playerWeapons.find(w => w.id === 'railgun');
-    const hasRocket = playerWeapons.find(w => w.id === 'rocket');
-    const hasMG   = playerWeapons.find(w => w.id === 'machinegun');
-    const hasFlak = playerWeapons.find(w => w.id === 'flak');
-    const hasCannon = playerWeapons.find(w => w.id === 'main_cannon');
+    const railW  = playerWeapons.find(w => w.id==='railgun');
+    const hasRocket  = playerWeapons.find(w => w.id==='rocket');
+    const hasMG      = playerWeapons.find(w => w.id==='machinegun');
+    const hasFlak    = playerWeapons.find(w => w.id==='flak');
+    const hasCannon  = playerWeapons.find(w => w.id==='main_cannon');
 
-    // ── Main cannon / railgun barrel (centre, forward) ──
+    // ── Main cannon ──
     if (hasCannon) {
-        // Thick main barrel
-        px(ctx, 14,  -4, 26, 8, T.outline);
-        px(ctx, 15,  -3, 24, 6, T.midPlate);
-        px(ctx, 15,  -3, 24, 2, T.white);      // top highlight
-        // Muzzle brake blocks
-        px(ctx, 36,  -5,  6, 10, T.outline);
-        px(ctx, 37,  -4,  4,  8, T.darkPlate);
-        px(ctx, 37,  -4,  4,  2, T.lightPlate);
+        const stacks = hasCannon.stackCount || 1;
+        // For each stack, slightly offset barrel vertically
+        for (let s = 0; s < stacks; s++) {
+            const yOff = (s - (stacks-1)/2) * 6;
+            px(ctx, 14, -4+yOff, 26, 8, T.outline);
+            px(ctx, 15, -3+yOff, 24, 6, T.midPlate);
+            px(ctx, 15, -3+yOff, 24, 2, T.white);
+            px(ctx, 36, -5+yOff,  6,10, T.outline);
+            px(ctx, 37, -4+yOff,  4, 8, T.darkPlate);
+            px(ctx, 37, -4+yOff,  4, 2, T.lightPlate);
+        }
     }
 
-    if (hasRail) {
-        // Replaces or overlays main barrel with rail coils
-        px(ctx, 14, -3, 32, 6, T.outline);
-        px(ctx, 15, -2, 30, 4, '#1a3a4a');     // dark barrel body
-        // Coil rings (pixel blocks)
+    // ── Railgun — thick barrel, grows with stacks ──
+    if (railW) {
+        const stacks    = railW.stackCount || 1;
+        const thickness = 6 + stacks * 3;   // gets thicker per stack
+        const halfT     = Math.floor(thickness/2);
+        // Barrel body
+        px(ctx, 14, -halfT, 34, thickness, T.outline);
+        px(ctx, 15, -halfT+1, 32, thickness-2, '#1a3a4a');
+        // Coils — taller per stack
         const coilColor = '#00e5ff';
         for (let i = 0; i < 6; i++) {
-            px(ctx, 16 + i*5, -4, 3, 8, T.outline);
-            px(ctx, 17 + i*5, -3, 1, 6, coilColor);
+            px(ctx, 16+i*5, -halfT-1, 3, thickness+2, T.outline);
+            px(ctx, 17+i*5, -halfT,   1, thickness,   coilColor);
         }
         // Glowing tip
-        px(ctx, 44, -2, 4, 4, coilColor);
-        px(ctx, 45, -1, 2, 2, '#ffffff');
+        px(ctx, 46, -halfT+1, 4, thickness-2, coilColor);
+        px(ctx, 47, -halfT+2, 2, thickness-4, '#ffffff');
+        // Side reinforcement struts
+        for (let s = 1; s < stacks; s++) {
+            px(ctx, 14+s*8, -halfT-3, 6, 3, T.darkPlate);
+            px(ctx, 14+s*8, halfT,    6, 3, T.darkPlate);
+        }
     }
 
-    // ── Machine gun — twin thin barrels mounted on TOP of turret ──
+    // ── Machine gun — twin barrels, more pairs per stack ──
     if (hasMG) {
-        // Left MG barrel
-        px(ctx, 10, -18, 28, 4, T.outline);
-        px(ctx, 11, -17, 26, 2, T.lightPlate);
-        px(ctx, 11, -17, 26, 1, T.white);
-        // Right MG barrel
-        px(ctx, 10,  14, 28, 4, T.outline);
-        px(ctx, 11,  15, 26, 2, T.lightPlate);
-        px(ctx, 11,  15, 26, 1, T.white);
-        // MG mount blocks on sides of turret
-        px(ctx, 8, -20, 10, 6, T.outline);
-        px(ctx, 9, -19,  8, 4, T.shadow);
-        px(ctx, 8,  14, 10, 6, T.outline);
-        px(ctx, 9,  15,  8, 4, T.shadow);
+        const stacks = hasMG.stackCount || 1;
+        for (let s = 0; s < stacks; s++) {
+            // Each stack adds a pair of barrels, spread outward
+            const spread = (s+1) * 10;
+            // Upper barrel
+            px(ctx, 10, -spread-2, 28, 4, T.outline);
+            px(ctx, 11, -spread-1, 26, 2, T.lightPlate);
+            px(ctx, 11, -spread-1, 26, 1, T.white);
+            // Lower barrel (mirror)
+            px(ctx, 10,  spread-2, 28, 4, T.outline);
+            px(ctx, 11,  spread-1, 26, 2, T.lightPlate);
+            px(ctx, 11,  spread-1, 26, 1, T.white);
+            // MG mount
+            px(ctx,  8, -spread-4, 10, 6, T.outline);
+            px(ctx,  9, -spread-3,  8, 4, T.shadow);
+            px(ctx,  8,  spread-2, 10, 6, T.outline);
+            px(ctx,  9,  spread-1,  8, 4, T.shadow);
+        }
     }
 
-    // ── Rocket launcher — boxy pod on the back of turret ──
+    // ── Rocket launcher pods on rear — one pod per stack ──
     if (hasRocket) {
-        // Launcher box on turret rear (left side of tank = negative x)
-        px(ctx, -22, -8, 14, 16, T.outline);
-        px(ctx, -21, -7, 12, 14, '#3e2723');
-        px(ctx, -21, -7, 12,  4, '#5d4037');   // top face
-        // Two tube openings
-        px(ctx, -22, -5,  4,  4, T.outline);
-        px(ctx, -21, -4,  2,  2, '#1a0a00');
-        px(ctx, -22,  1,  4,  4, T.outline);
-        px(ctx, -21,  2,  2,  2, '#1a0a00');
-        // Rocket pipes running forward
-        px(ctx, -8, -4, 22, 4, T.outline);
-        px(ctx, -7, -3, 20, 2, '#5d4037');
-        px(ctx, -8,  0, 22, 4, T.outline);
-        px(ctx, -7,  1, 20, 2, '#5d4037');
+        const stacks = hasRocket.stackCount || 1;
+        for (let s = 0; s < stacks; s++) {
+            const yOff = (s - (stacks-1)/2) * 18;
+            // Pod body on rear
+            px(ctx, -26, -8+yOff, 12,16, T.outline);
+            px(ctx, -25, -7+yOff, 10,14, '#3e2723');
+            px(ctx, -25, -7+yOff, 10, 4, '#5d4037');
+            // Tube openings
+            px(ctx, -26, -5+yOff, 4,4, T.outline);
+            px(ctx, -25, -4+yOff, 2,2, '#1a0a00');
+            px(ctx, -26,  1+yOff, 4,4, T.outline);
+            px(ctx, -25,  2+yOff, 2,2, '#1a0a00');
+            // Forward pipes
+            px(ctx, -14, -4+yOff, 18,4, T.outline);
+            px(ctx, -13, -3+yOff, 16,2, '#5d4037');
+            px(ctx, -14,  0+yOff, 18,4, T.outline);
+            px(ctx, -13,  1+yOff, 16,2, '#5d4037');
+        }
     }
 
-    // ── Flak gun — wide flared muzzle on side of main barrel ──
+    // ── Flak — short flared muzzle below, stacks add tubes ──
     if (hasFlak) {
-        // Flak pod mounted below main barrel
-        px(ctx, 10,  5, 16, 10, T.outline);
-        px(ctx, 11,  6, 14,  8, '#4a148c');
-        px(ctx, 11,  6, 14,  2, '#6a1b9a');    // top highlight
-        // Flared muzzle
-        px(ctx, 24,  3, 10, 14, T.outline);
-        px(ctx, 25,  4,  8, 12, '#6a1b9a');
-        // Muzzle dark inner
-        px(ctx, 28,  6,  4,  8, '#1a0033');
-        px(ctx, 29,  7,  2,  6, '#000000');
+        const stacks = hasFlak.stackCount || 1;
+        for (let s = 0; s < stacks; s++) {
+            const yOff = 6 + s * 12;
+            px(ctx, 10, yOff,    16,10, T.outline);
+            px(ctx, 11, yOff+1,  14, 8, '#4a148c');
+            px(ctx, 11, yOff+1,  14, 2, '#6a1b9a');
+            px(ctx, 24, yOff-2,  10,14, T.outline);
+            px(ctx, 25, yOff-1,   8,12, '#6a1b9a');
+            px(ctx, 28, yOff+1,   4, 8, '#1a0033');
+            px(ctx, 29, yOff+2,   2, 6, '#000000');
+        }
     }
 }
 
@@ -579,31 +604,105 @@ const bullets = [];
 
 function tryShootAll() {
     if (weaponPickOpen) return;
-    playerWeapons.forEach((_, i) => tryShootWeapon(i));
+    playerWeapons.forEach((_,i) => tryShootWeapon(i));
 }
 
 function tryShootWeapon(index) {
     const w   = playerWeapons[index];
     const now = Date.now();
-    if (now - (w.lastShot || 0) < w.cooldown) return;
+    if (now - (w.lastShot||0) < w.cooldown) return;
     w.lastShot = now;
 
-    for (let s = 0; s < w.count; s++) {
-        const spread = (Math.random() - 0.5) * w.spread * 2;
-        // All weapons fire along player.angle (forward), spread only for flak
-        const angle  = player.angle + spread;
-        const tip    = 42;
-        bullets.push({
-            x:  player.x + Math.cos(angle) * tip,
-            y:  player.y + Math.sin(angle) * tip,
-            vx: Math.cos(angle) * w.bulletSpeed,
-            vy: Math.sin(angle) * w.bulletSpeed,
-            life: w.range, maxLife: w.range,
-            radius: w.bulletRadius, color: w.bulletColor,
-            damage: w.damage, type: w.type,
-            explRadius: w.explosionRadius || 0,
-            trail: []
-        });
+    const stacks = w.stackCount || 1;
+
+    if (w.type === 'rail') {
+        // One beam per stack, slightly spread
+        for (let s = 0; s < stacks; s++) {
+            const angleOff = (s - (stacks-1)/2) * 0.04;
+            const angle    = player.angle + angleOff;
+            const tip      = 48;
+            bullets.push({
+                x:  player.x + Math.cos(angle)*tip,
+                y:  player.y + Math.sin(angle)*tip,
+                vx: Math.cos(angle)*w.bulletSpeed,
+                vy: Math.sin(angle)*w.bulletSpeed,
+                life: w.range, maxLife: w.range,
+                radius: w.bulletRadius + (w.stackCount-1)*2,
+                color: w.bulletColor,
+                damage: w.damage, type: w.type,
+                explRadius: 0, trail: [],
+                hitEnemies: new Set(),   // track which enemies already hit
+                beamWidth: 4 + (w.stackCount||1) * 3
+            });
+        }
+        return;
+    }
+
+    if (w.type === 'rocket') {
+        // Rockets: stacks = more rockets per shot, spread slightly
+        for (let s = 0; s < stacks; s++) {
+            const angleOff = (s - (stacks-1)/2) * 0.12;
+            const angle    = player.angle + angleOff;
+            const tip      = 42;
+            bullets.push({
+                x:  player.x + Math.cos(angle)*tip,
+                y:  player.y + Math.sin(angle)*tip,
+                vx: Math.cos(angle)*w.bulletSpeed,
+                vy: Math.sin(angle)*w.bulletSpeed,
+                life: w.range, maxLife: w.range,
+                radius: w.bulletRadius, color: w.bulletColor,
+                damage: w.damage, type: w.type,
+                explRadius: w.explosionRadius||0, trail: [],
+                hitEnemies: new Set()
+            });
+        }
+        return;
+    }
+
+    if (w.type === 'bullet' || w.type === 'flak') {
+        for (let s = 0; s < w.count; s++) {
+            const spread   = (Math.random()-0.5)*w.spread*2;
+            // For machinegun stacks: spread out multiple streams
+            let stackAngleOff = 0;
+            if (w.id === 'machinegun' && stacks > 1) {
+                stackAngleOff = (Math.floor(s / w.count) - (stacks-1)/2) * 0.12;
+            }
+            const angle = player.angle + spread + stackAngleOff;
+            const tip   = 42;
+            bullets.push({
+                x:  player.x + Math.cos(angle)*tip,
+                y:  player.y + Math.sin(angle)*tip,
+                vx: Math.cos(angle)*w.bulletSpeed,
+                vy: Math.sin(angle)*w.bulletSpeed,
+                life: w.range, maxLife: w.range,
+                radius: w.bulletRadius, color: w.bulletColor,
+                damage: w.damage, type: w.type,
+                explRadius: w.explosionRadius||0, trail: [],
+                hitEnemies: new Set()
+            });
+        }
+        // Extra bullet streams for stacked machinegun
+        if (w.id === 'machinegun' && stacks > 1) {
+            for (let extra = 1; extra < stacks; extra++) {
+                for (let s = 0; s < w.count; s++) {
+                    const spread   = (Math.random()-0.5)*w.spread*2;
+                    const angleOff = (extra - (stacks-1)/2) * 0.14;
+                    const angle    = player.angle + spread + angleOff;
+                    const tip      = 42;
+                    bullets.push({
+                        x:  player.x + Math.cos(angle)*tip,
+                        y:  player.y + Math.sin(angle)*tip,
+                        vx: Math.cos(angle)*w.bulletSpeed,
+                        vy: Math.sin(angle)*w.bulletSpeed,
+                        life: w.range, maxLife: w.range,
+                        radius: w.bulletRadius, color: w.bulletColor,
+                        damage: w.damage, type: w.type,
+                        explRadius: 0, trail: [],
+                        hitEnemies: new Set()
+                    });
+                }
+            }
+        }
     }
 }
 
@@ -612,30 +711,42 @@ function handleAutoFire() {
 }
 
 function updateBullets() {
-    for (let i = bullets.length - 1; i >= 0; i--) {
+    for (let i = bullets.length-1; i >= 0; i--) {
         const b = bullets[i];
-  b.trail.push({ x: b.x, y: b.y });
-        // Rail keeps full trail back to origin, others keep short trail
+        b.trail.push({ x:b.x, y:b.y });
+        // Rail keeps full trail, others keep short
         if (b.type !== 'rail' && b.trail.length > 7) b.trail.shift();
+
         b.x += b.vx; b.y += b.vy;
         b.life--;
+
         if (b.life <= 0) {
-            if (b.type === 'rocket') triggerExplosion(b.x, b.y, b.explRadius, b.damage);
+            if (b.type==='rocket') triggerExplosion(b.x, b.y, b.explRadius, b.damage);
             bullets.splice(i, 1);
             continue;
         }
+
         let hit = false;
-        for (let j = enemies.length - 1; j >= 0; j--) {
+        for (let j = enemies.length-1; j >= 0; j--) {
             const e  = enemies[j];
             const dx = b.x - e.x, dy = b.y - e.y;
-            if (Math.hypot(dx, dy) < e.radius + b.radius) {
-                if (b.type === 'rocket') {
+            if (Math.hypot(dx,dy) < e.radius + b.radius) {
+                // Rail: only damage each enemy once per shot
+                if (b.type === 'rail') {
+                    if (!b.hitEnemies.has(j)) {
+                        b.hitEnemies.add(j);
+                        damageEnemy(j, b.damage);
+                        spawnHitParticles(e.x, e.y, e.color);
+                    }
+                    // Rail never stops
+                } else if (b.type === 'rocket') {
                     triggerExplosion(b.x, b.y, b.explRadius, b.damage);
+                    hit = true; break;
                 } else {
                     damageEnemy(j, b.damage);
                     spawnHitParticles(e.x, e.y, e.color);
+                    hit = true; break;
                 }
-                if (b.type !== 'rail') { hit = true; break; }
             }
         }
         if (hit) bullets.splice(i, 1);
@@ -644,96 +755,96 @@ function updateBullets() {
 
 function triggerExplosion(wx, wy, radius, damage) {
     spawnExplosionParticles(wx, wy);
-    for (let j = enemies.length - 1; j >= 0; j--) {
-        if (Math.hypot(wx - enemies[j].x, wy - enemies[j].y) < radius + enemies[j].radius)
-            damageEnemy(j, damage * 3);
+    for (let j = enemies.length-1; j >= 0; j--) {
+        if (Math.hypot(wx-enemies[j].x, wy-enemies[j].y) < radius+enemies[j].radius)
+            damageEnemy(j, damage*3);
     }
 }
 
 function drawBullets() {
     for (const b of bullets) {
 
-        // ── Railgun beam — drawn as a long fading line from origin to current pos ──
+        // ── Railgun beam ──
         if (b.type === 'rail') {
-            const origin = b.trail.length > 0 ? b.trail[0] : { x: b.x, y: b.y };
-            const { x: ox, y: oy } = worldToScreen(origin.x, origin.y);
-            const { x: hx, y: hy } = worldToScreen(b.x, b.y);
-
+            const origin = b.trail.length > 0 ? b.trail[0] : { x:b.x, y:b.y };
+            const { x:ox, y:oy } = worldToScreen(origin.x, origin.y);
+            const { x:hx, y:hy } = worldToScreen(b.x, b.y);
             const lifeFrac = b.life / b.maxLife;
+            const bw       = b.beamWidth || 8;
 
-            // Outer wide glow
-            const beamGrad = ctx.createLinearGradient(ox, oy, hx, hy);
-            beamGrad.addColorStop(0, `rgba(0,229,255,0)`);
-            beamGrad.addColorStop(0.15, `rgba(0,229,255,${0.18 * lifeFrac})`);
-            beamGrad.addColorStop(1,  `rgba(0,229,255,${0.85 * lifeFrac})`);
             ctx.save();
+            ctx.lineCap = 'round';
+
+            // Outer glow — fades faster (trail drops off)
+            const beamGrad = ctx.createLinearGradient(ox,oy,hx,hy);
+            beamGrad.addColorStop(0,   `rgba(0,229,255,0)`);
+            beamGrad.addColorStop(0.35,`rgba(0,229,255,${0.10*lifeFrac})`);
+            beamGrad.addColorStop(1,   `rgba(0,229,255,${0.75*lifeFrac})`);
             ctx.strokeStyle = beamGrad;
-            ctx.lineWidth   = 14;
-            ctx.lineCap     = 'round';
+            ctx.lineWidth   = bw * 3.5;
             ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
 
             // Mid glow
-            const midGrad = ctx.createLinearGradient(ox, oy, hx, hy);
-            midGrad.addColorStop(0, `rgba(150,240,255,0)`);
-            midGrad.addColorStop(0.2, `rgba(150,240,255,${0.35 * lifeFrac})`);
-            midGrad.addColorStop(1,  `rgba(200,248,255,${0.95 * lifeFrac})`);
+            const midGrad = ctx.createLinearGradient(ox,oy,hx,hy);
+            midGrad.addColorStop(0,   `rgba(150,240,255,0)`);
+            midGrad.addColorStop(0.45,`rgba(150,240,255,${0.28*lifeFrac})`);
+            midGrad.addColorStop(1,   `rgba(200,248,255,${0.9*lifeFrac})`);
             ctx.strokeStyle = midGrad;
-            ctx.lineWidth   = 5;
+            ctx.lineWidth   = bw * 1.4;
             ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
 
             // Bright core
-            const coreGrad = ctx.createLinearGradient(ox, oy, hx, hy);
-            coreGrad.addColorStop(0, `rgba(255,255,255,0)`);
-            coreGrad.addColorStop(0.3, `rgba(255,255,255,${0.6 * lifeFrac})`);
-            coreGrad.addColorStop(1,  `rgba(255,255,255,${lifeFrac})`);
+            const coreGrad = ctx.createLinearGradient(ox,oy,hx,hy);
+            coreGrad.addColorStop(0,   `rgba(255,255,255,0)`);
+            coreGrad.addColorStop(0.55,`rgba(255,255,255,${0.5*lifeFrac})`);
+            coreGrad.addColorStop(1,   `rgba(255,255,255,${lifeFrac})`);
             ctx.strokeStyle = coreGrad;
-            ctx.lineWidth   = 2;
+            ctx.lineWidth   = bw * 0.5;
             ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
 
-            // Leading tip glow burst
-            const tipGrd = ctx.createRadialGradient(hx,hy,0,hx,hy,18*lifeFrac);
-            tipGrd.addColorStop(0, `rgba(255,255,255,${0.9*lifeFrac})`);
+            // Leading tip burst
+            const tipR = (bw*2.5)*lifeFrac;
+            const tipGrd = ctx.createRadialGradient(hx,hy,0,hx,hy,tipR);
+            tipGrd.addColorStop(0,   `rgba(255,255,255,${0.9*lifeFrac})`);
             tipGrd.addColorStop(0.4, `rgba(0,229,255,${0.6*lifeFrac})`);
-            tipGrd.addColorStop(1, `rgba(0,229,255,0)`);
+            tipGrd.addColorStop(1,   `rgba(0,229,255,0)`);
             ctx.fillStyle = tipGrd;
-            ctx.beginPath(); ctx.arc(hx,hy,18*lifeFrac,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(hx,hy,tipR,0,Math.PI*2); ctx.fill();
 
             ctx.restore();
-            continue;  // skip normal bullet drawing for rail
+            continue;
         }
 
-        // Normal bullet trail
+        // Normal trail
         for (let t = 0; t < b.trail.length; t++) {
             const tr = b.trail[t];
-            const { x: sx, y: sy } = worldToScreen(tr.x, tr.y);
-            ctx.globalAlpha = (t / b.trail.length) * 0.45;
+            const { x:sx, y:sy } = worldToScreen(tr.x, tr.y);
+            ctx.globalAlpha = (t/b.trail.length)*0.45;
             ctx.fillStyle   = b.color;
-            ctx.beginPath();
-            ctx.arc(sx, sy, b.radius * 0.55, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(sx,sy,b.radius*0.55,0,Math.PI*2); ctx.fill();
         }
         ctx.globalAlpha = 1;
-        const { x: sx, y: sy } = worldToScreen(b.x, b.y);
+        const { x:sx, y:sy } = worldToScreen(b.x, b.y);
+
         if (b.type === 'rocket') {
             ctx.save(); ctx.translate(sx,sy); ctx.rotate(Math.atan2(b.vy,b.vx));
-            ctx.fillStyle = '#ff7043';
-            ctx.fillRect(-8,-3,16,6);
-            ctx.fillStyle = '#ffccbc';
+            ctx.fillStyle='#ff7043'; ctx.fillRect(-8,-3,16,6);
+            ctx.fillStyle='#ffccbc';
             ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(4,-4); ctx.lineTo(4,4); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#ffeb3b';
+            ctx.fillStyle='#ffeb3b';
             ctx.beginPath(); ctx.arc(-9,0,4,0,Math.PI*2); ctx.fill();
             ctx.restore();
         } else if (b.type === 'flak') {
             ctx.save(); ctx.translate(sx,sy); ctx.rotate(Math.atan2(b.vy,b.vx));
-            ctx.fillStyle = b.color;
+            ctx.fillStyle = '#607d8b';
             ctx.beginPath(); ctx.moveTo(b.radius*1.5,0); ctx.lineTo(-b.radius,-b.radius); ctx.lineTo(-b.radius,b.radius); ctx.closePath(); ctx.fill();
             ctx.restore();
         } else {
             const grd = ctx.createRadialGradient(sx,sy,0,sx,sy,b.radius*2.5);
-            grd.addColorStop(0, b.color+'ee'); grd.addColorStop(1, b.color+'00');
-            ctx.fillStyle = grd;
+            grd.addColorStop(0,b.color+'ee'); grd.addColorStop(1,b.color+'00');
+            ctx.fillStyle=grd;
             ctx.beginPath(); ctx.arc(sx,sy,b.radius*2.5,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#fffde7';
+            ctx.fillStyle='#fffde7';
             ctx.beginPath(); ctx.arc(sx,sy,b.radius,0,Math.PI*2); ctx.fill();
         }
     }
@@ -741,90 +852,136 @@ function drawBullets() {
 }
 
 // ════════════════════════════════════════════════
-//  ENEMIES
+//  ENEMY TIERS  (tier 1-10)
 // ════════════════════════════════════════════════
 const ENEMY_DEFS = [
-    { shape:'square',   sides:4, radius:14, color:'#42a5f5', hpMax:2,  orbs:1,  tier:1 },
-    { shape:'triangle', sides:3, radius:20, color:'#ffa726', hpMax:5,  orbs:2,  tier:1 },
-    { shape:'hexagon',  sides:6, radius:28, color:'#ef5350', hpMax:10, orbs:4,  tier:2 },
-    { shape:'pentagon', sides:5, radius:34, color:'#ab47bc', hpMax:15, orbs:6,  tier:2 },
-    { shape:'octagon',  sides:8, radius:40, color:'#ec407a', hpMax:25, orbs:9,  tier:3 },
-    { shape:'diamond',  sides:4, radius:30, color:'#ff1744', hpMax:30, orbs:12, tier:3 },
-    { shape:'bigHex',   sides:6, radius:52, color:'#d50000', hpMax:55, orbs:20, tier:4 },
+    // Tier 1
+    { shape:'square',    sides:4, radius:13, color:'#64b5f6', hpMax:2,   orbs:1,  tier:1 },
+    { shape:'triangle',  sides:3, radius:16, color:'#81c784', hpMax:3,   orbs:1,  tier:1 },
+    // Tier 2
+    { shape:'pentagon',  sides:5, radius:20, color:'#ffa726', hpMax:7,   orbs:2,  tier:2 },
+    { shape:'hexagon',   sides:6, radius:22, color:'#ff8a65', hpMax:10,  orbs:3,  tier:2 },
+    // Tier 3
+    { shape:'heptagon',  sides:7, radius:26, color:'#ef5350', hpMax:18,  orbs:5,  tier:3 },
+    { shape:'octagon',   sides:8, radius:28, color:'#e53935', hpMax:22,  orbs:6,  tier:3 },
+    // Tier 4
+    { shape:'diamond',   sides:4, radius:30, color:'#ab47bc', hpMax:35,  orbs:9,  tier:4 },
+    { shape:'pentagon2', sides:5, radius:34, color:'#8e24aa', hpMax:42,  orbs:11, tier:4 },
+    // Tier 5
+    { shape:'hexL',      sides:6, radius:38, color:'#ec407a', hpMax:60,  orbs:15, tier:5 },
+    { shape:'octL',      sides:8, radius:40, color:'#d81b60', hpMax:70,  orbs:18, tier:5 },
+    // Tier 6
+    { shape:'hex6',      sides:6, radius:44, color:'#ff1744', hpMax:90,  orbs:22, tier:6 },
+    { shape:'oct6',      sides:8, radius:46, color:'#d50000', hpMax:105, orbs:26, tier:6 },
+    // Tier 7
+    { shape:'pent7',     sides:5, radius:50, color:'#bf360c', hpMax:130, orbs:32, tier:7 },
+    { shape:'hept7',     sides:7, radius:52, color:'#e64a19', hpMax:150, orbs:36, tier:7 },
+    // Tier 8
+    { shape:'hex8',      sides:6, radius:56, color:'#4a148c', hpMax:180, orbs:42, tier:8 },
+    { shape:'oct8',      sides:8, radius:58, color:'#6a1b9a', hpMax:210, orbs:48, tier:8 },
+    // Tier 9
+    { shape:'hex9',      sides:6, radius:62, color:'#1a237e', hpMax:260, orbs:56, tier:9 },
+    { shape:'oct9',      sides:8, radius:64, color:'#283593', hpMax:300, orbs:64, tier:9 },
+    // Tier 10
+    { shape:'boss10a',   sides:6, radius:72, color:'#880e4f', hpMax:450, orbs:90, tier:10 },
+    { shape:'boss10b',   sides:8, radius:76, color:'#b71c1c', hpMax:500, orbs:100,tier:10 },
 ];
 
 const enemies   = [];
-const MAX_ENEMIES = 80;   // much more enemies
+const MAX_ENEMIES = 100;
 let   killCount   = 0;
 
-function availableEnemyDefs() {
-    const defs = ENEMY_DEFS.filter(d => {
-        if (d.tier === 1) return true;
-        if (d.tier === 2) return level >= 4;
-        if (d.tier === 3) return level >= 7;
-        if (d.tier === 4) return level >= 10;
-        return false;
-    });
-    const weighted = [];
-    defs.forEach(d => {
-        let w = 1;
-        if (d.tier === 1 && level >= 6)  w = 0.4;
-        if (d.tier === 1 && level >= 10) w = 0.15;
-        if (d.tier === level - 2)        w = 2.5;
-        for (let i = 0; i < Math.max(1, Math.round(w * 10)); i++) weighted.push(d);
-    });
-    return weighted;
+// Tier unlock thresholds (player level needed)
+const TIER_UNLOCK = [0, 0, 4, 7, 10, 13, 16, 19, 22, 25, 28];
+
+// Max cluster sizes per tier
+function maxCluster(tier) {
+    if (tier <= 2)  return 8;
+    if (tier <= 4)  return 4;
+    if (tier <= 6)  return 2;
+    return 1;
 }
 
-function spawnEnemy() {
-    if (enemies.length >= MAX_ENEMIES) return;
-    const pool = availableEnemyDefs();
-    const def  = pool[Math.floor(Math.random() * pool.length)];
-    let ex, ey;
-    let attempts = 0;
-    do {
-        ex = Math.random() * (WORLD_SIZE - BORDER_SIZE*2 - 200) + BORDER_SIZE + 100;
-        ey = Math.random() * (WORLD_SIZE - BORDER_SIZE*2 - 200) + BORDER_SIZE + 100;
-        attempts++;
-    } while (Math.hypot(ex - player.x, ey - player.y) < 350 && attempts < 20);
+// Spawn weight — higher tiers get rarer as tier goes up
+function tierWeight(tier) {
+    if (tier <= 2) return 18;
+    if (tier === 3) return 12;
+    if (tier === 4) return 8;
+    if (tier === 5) return 5;
+    if (tier === 6) return 3.5;
+    if (tier === 7) return 2.2;
+    if (tier === 8) return 1.4;
+    if (tier === 9) return 0.8;
+    if (tier === 10) return 0.4;
+    return 1;
+}
 
-    enemies.push({
-        ...def, x: ex, y: ey, hp: def.hpMax,
-        angle: Math.random() * Math.PI * 2,
-        flashTimer: 0,
-        // Roaming
-        spawnX:   ex,
-        spawnY:   ey,
-        roamAngle: Math.random() * Math.PI * 2,
-        roamTimer: Math.floor(Math.random() * 120),
-        roamRadius: 80 + Math.random() * 80,   // invisible circle radius
-        roamSpeed:  0.3 + Math.random() * 0.4,
+function availableEnemyDefs() {
+    return ENEMY_DEFS.filter(d => level >= TIER_UNLOCK[d.tier]);
+}
+
+function spawnCluster() {
+    if (enemies.length >= MAX_ENEMIES) return;
+
+    const pool = availableEnemyDefs();
+    if (pool.length === 0) return;
+
+    // Pick weighted random def
+    const weighted = [];
+    pool.forEach(d => {
+        const w = tierWeight(d.tier);
+        const n = Math.max(1, Math.round(w * 5));
+        for (let i = 0; i < n; i++) weighted.push(d);
     });
+    const def = weighted[Math.floor(Math.random() * weighted.length)];
+
+    // Cluster size
+    const clusterMax  = maxCluster(def.tier);
+    const clusterSize = Math.floor(Math.random() * clusterMax) + 1;
+
+    // Pick cluster center far from player
+    let cx, cy, attempts = 0;
+    do {
+        cx = Math.random()*(WORLD_SIZE-BORDER_SIZE*2-200)+BORDER_SIZE+100;
+        cy = Math.random()*(WORLD_SIZE-BORDER_SIZE*2-200)+BORDER_SIZE+100;
+        attempts++;
+    } while (Math.hypot(cx-player.x, cy-player.y) < 400 && attempts < 25);
+
+    const clusterSpread = 60 + def.radius * 2.5;
+
+    for (let i = 0; i < clusterSize; i++) {
+        if (enemies.length >= MAX_ENEMIES) break;
+        const a  = Math.random()*Math.PI*2;
+        const d  = Math.random()*clusterSpread;
+        const ex = cx + Math.cos(a)*d;
+        const ey = cy + Math.sin(a)*d;
+
+        enemies.push({
+            ...def,
+            x: ex, y: ey, hp: def.hpMax,
+            angle: Math.random()*Math.PI*2,
+            flashTimer: 0,
+            spawnX: ex, spawnY: ey,
+            roamAngle: Math.random()*Math.PI*2,
+            roamTimer: Math.floor(Math.random()*120),
+            roamRadius: 70 + Math.random()*70,
+            roamSpeed:  0.25 + Math.random()*0.35,
+        });
+    }
 }
 
 function updateEnemies() {
     for (const e of enemies) {
-        // Change roam direction occasionally
         e.roamTimer--;
         if (e.roamTimer <= 0) {
-            e.roamAngle = Math.random() * Math.PI * 2;
-            e.roamTimer = 60 + Math.floor(Math.random() * 120);
+            e.roamAngle = Math.random()*Math.PI*2;
+            e.roamTimer = 60 + Math.floor(Math.random()*120);
         }
-
-        // Move in roam direction
-        const nx = e.x + Math.cos(e.roamAngle) * e.roamSpeed;
-        const ny = e.y + Math.sin(e.roamAngle) * e.roamSpeed;
-
-        // Pull back if outside roam circle
+        const nx = e.x + Math.cos(e.roamAngle)*e.roamSpeed;
+        const ny = e.y + Math.sin(e.roamAngle)*e.roamSpeed;
         const dx = nx - e.spawnX, dy = ny - e.spawnY;
-        if (Math.hypot(dx, dy) < e.roamRadius) {
-            e.x = nx; e.y = ny;
-        } else {
-            // Steer back toward spawn
-            e.roamAngle = Math.atan2(e.spawnY - e.y, e.spawnX - e.x) + (Math.random()-0.5)*0.5;
-        }
-
-        // Slow cosmetic rotation
+        if (Math.hypot(dx,dy) < e.roamRadius) { e.x=nx; e.y=ny; }
+        else { e.roamAngle = Math.atan2(e.spawnY-e.y, e.spawnX-e.x)+(Math.random()-0.5)*0.5; }
         e.angle += 0.005;
         if (e.flashTimer > 0) e.flashTimer--;
     }
@@ -848,32 +1005,32 @@ function killEnemy(index) {
 }
 
 function drawEnemy(e) {
-    const { x: sx, y: sy } = worldToScreen(e.x, e.y);
-    const pad = e.radius + 10;
-    if (sx < -pad || sx > canvas.width+pad || sy < -pad || sy > canvas.height+pad) return;
+    const { x:sx, y:sy } = worldToScreen(e.x, e.y);
+    const pad = e.radius+10;
+    if (sx<-pad||sx>canvas.width+pad||sy<-pad||sy>canvas.height+pad) return;
 
     ctx.save();
-    ctx.translate(sx, sy);
+    ctx.translate(sx,sy);
     ctx.rotate(e.angle);
-    ctx.fillStyle   = e.flashTimer > 0 ? '#ffffff' : e.color;
+    ctx.fillStyle   = e.flashTimer>0 ? '#ffffff' : e.color;
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth   = 2.5;
     drawPolygon(ctx, e.sides, e.radius);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.13)';
-    drawPolygon(ctx, e.sides, e.radius * 0.55);
+    ctx.fillStyle='rgba(255,255,255,0.13)';
+    drawPolygon(ctx, e.sides, e.radius*0.55);
     ctx.fill();
     ctx.restore();
 
-    drawBar(sx, sy - e.radius - 12, e.radius*2, 6, e.hp/e.hpMax, '#66bb6a', '#1b5e20');
+    drawBar(sx, sy-e.radius-12, e.radius*2, 6, e.hp/e.hpMax, '#66bb6a', '#1b5e20');
 }
 
 function drawPolygon(ctx, sides, r) {
     ctx.beginPath();
-    for (let i = 0; i < sides; i++) {
-        const a = (i/sides)*Math.PI*2 - Math.PI/2;
-        i===0 ? ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r)
-              : ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+    for (let i=0; i<sides; i++) {
+        const a=(i/sides)*Math.PI*2-Math.PI/2;
+        i===0 ? ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r)
+              : ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
     }
     ctx.closePath();
 }
@@ -883,36 +1040,33 @@ function drawPolygon(ctx, sides, r) {
 // ════════════════════════════════════════════════
 const orbs = [];
 
-function spawnOrbs(x, y, count, color) {
-    for (let i = 0; i < count; i++) {
-        const a = Math.random()*Math.PI*2, d = Math.random()*30+10;
+function spawnOrbs(x,y,count,color) {
+    for (let i=0;i<count;i++) {
+        const a=Math.random()*Math.PI*2, d=Math.random()*30+10;
         orbs.push({ x:x+Math.cos(a)*d, y:y+Math.sin(a)*d,
                     radius:6, color, pulse:Math.random()*Math.PI*2 });
     }
 }
 
 function updateOrbs() {
-    for (let i = orbs.length-1; i >= 0; i--) {
-        const o  = orbs[i];
-        o.pulse += 0.08;
-        const dx = player.x-o.x, dy = player.y-o.y;
-        const d  = Math.hypot(dx,dy);
-        if (d < 130) { o.x += (dx/d)*3.8; o.y += (dy/d)*3.8; }
-        if (d < 38)  collectOrb(i);
+    for (let i=orbs.length-1;i>=0;i--) {
+        const o=orbs[i];
+        o.pulse+=0.08;
+        const dx=player.x-o.x, dy=player.y-o.y, d=Math.hypot(dx,dy);
+        if (d<130) { o.x+=(dx/d)*3.8; o.y+=(dy/d)*3.8; }
+        if (d<38)  collectOrb(i);
     }
 }
 
 function drawOrbs() {
     for (const o of orbs) {
-        const { x:sx, y:sy } = worldToScreen(o.x, o.y);
-        if (sx<-20||sx>canvas.width+20||sy<-20||sy>canvas.height+20) continue;
-        const r = o.radius + Math.sin(o.pulse)*2;
-        const g = ctx.createRadialGradient(sx,sy,0,sx,sy,r*2.5);
+        const{x:sx,y:sy}=worldToScreen(o.x,o.y);
+        if(sx<-20||sx>canvas.width+20||sy<-20||sy>canvas.height+20) continue;
+        const r=o.radius+Math.sin(o.pulse)*2;
+        const g=ctx.createRadialGradient(sx,sy,0,sx,sy,r*2.5);
         g.addColorStop(0,o.color+'cc'); g.addColorStop(1,o.color+'00');
-        ctx.fillStyle=g;
-        ctx.beginPath(); ctx.arc(sx,sy,r*2.5,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle=o.color;
-        ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,r*2.5,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=o.color; ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,0.5)';
         ctx.beginPath(); ctx.arc(sx-r*0.3,sy-r*0.3,r*0.35,0,Math.PI*2); ctx.fill();
     }
@@ -921,112 +1075,100 @@ function drawOrbs() {
 // ════════════════════════════════════════════════
 //  XP / LEVELING
 // ════════════════════════════════════════════════
-let xp = 0, level = 1;
-
-function xpNeeded(lvl) { return Math.floor(6 * Math.pow(1.45, lvl-1)); }
+let xp=0, level=1;
+function xpNeeded(lvl) { return Math.floor(6*Math.pow(1.45,lvl-1)); }
 
 function collectOrb(index) {
-    orbs.splice(index, 1);
-    xp++;
-    if (xp >= xpNeeded(level)) { xp -= xpNeeded(level); level++; onLevelUp(); }
+    orbs.splice(index,1); xp++;
+    if (xp>=xpNeeded(level)) { xp-=xpNeeded(level); level++; onLevelUp(); }
     updateXpUI();
 }
 
 function onLevelUp() {
-    spawnLevelUpEffect();
-    updateXpUI();
-    if (level % 2 === 0) showWeaponPick();
+    spawnLevelUpEffect(); updateXpUI();
+    if (level%2===0) showWeaponPick();
 }
 
 function updateXpUI() {
-    const needed = xpNeeded(level);
-    document.getElementById('level-display').textContent = `Level ${level}`;
-    document.getElementById('xp-bar').style.width = `${(xp/needed)*100}%`;
-    document.getElementById('xp-label').textContent = `${xp} / ${needed} XP`;
+    const needed=xpNeeded(level);
+    document.getElementById('level-display').textContent=`Level ${level}`;
+    document.getElementById('xp-bar').style.width=`${(xp/needed)*100}%`;
+    document.getElementById('xp-label').textContent=`${xp} / ${needed} XP`;
 }
 
 // ════════════════════════════════════════════════
 //  WEAPON PICK UI
 // ════════════════════════════════════════════════
 function showWeaponPick() {
-    weaponPickOpen = true;
-    mouse.down     = false;
-    const overlay  = document.getElementById('weapon-pick');
-    const subtitle = document.getElementById('weapon-pick-subtitle');
-    const options  = document.getElementById('weapon-options');
-    options.innerHTML = '';
-
-    const isFirst  = playerWeapons.length===1 && playerWeapons[0].id==='main_cannon';
-    subtitle.textContent = isFirst ? 'Choose your primary weapon type'
-                                   : 'Add a new weapon to your arsenal';
-const available = Object.values(WEAPON_DEFS).filter(
-    w => w.id !== 'main_cannon'
-);
-    if (available.length===0) { weaponPickOpen=false; return; }
-
-    available.forEach(def => {
-        const card = document.createElement('div');
-        card.className = 'weapon-card';
-        card.innerHTML = `<div class="wicon">${def.icon}</div><h3>${def.name}</h3><p>${def.desc}</p>`;
-        card.addEventListener('click', () => pickWeapon(def));
+    weaponPickOpen=true; mouse.down=false;
+    const overlay =document.getElementById('weapon-pick');
+    const subtitle=document.getElementById('weapon-pick-subtitle');
+    const options =document.getElementById('weapon-options');
+    options.innerHTML='';
+    const isFirst=playerWeapons.length===1&&playerWeapons[0].id==='main_cannon';
+    subtitle.textContent=isFirst?'Choose your primary weapon type':'Add or upgrade a weapon';
+    const available=Object.values(WEAPON_DEFS).filter(w=>w.id!=='main_cannon');
+    if(available.length===0){weaponPickOpen=false;return;}
+    available.forEach(def=>{
+        const existing=playerWeapons.find(w=>w.id===def.id);
+        const card=document.createElement('div');
+        card.className='weapon-card';
+        const stackInfo=existing?`<p style="color:#80cbc4;margin-top:4px;">Currently: x${existing.stackCount||1} — Upgrade!</p>`:'';
+        card.innerHTML=`<div class="wicon">${def.icon}</div><h3>${def.name}</h3><p>${def.desc}</p>${stackInfo}`;
+        card.addEventListener('click',()=>pickWeapon(def));
         options.appendChild(card);
     });
     overlay.classList.add('visible');
 }
 
 function pickWeapon(def) {
-    const isFirst   = playerWeapons.length===1 && playerWeapons[0].id==='main_cannon';
-    const existing  = playerWeapons.find(w => w.id === def.id);
+    const isFirst =playerWeapons.length===1&&playerWeapons[0].id==='main_cannon';
+    const existing=playerWeapons.find(w=>w.id===def.id);
     if (isFirst) {
-        playerWeapons[0] = { ...def, lastShot:0, stackCount:1 };
+        playerWeapons[0]={...def,lastShot:0,stackCount:1};
     } else if (existing) {
-        // Stack: increase count, slightly reduce cooldown per stack
-        existing.stackCount = (existing.stackCount || 1) + 1;
-        existing.count      = (existing.count || 1) + 1;
-        existing.cooldown   = Math.max(
-            def.cooldown * 0.4,
-            existing.cooldown * 0.82
-        );
+        existing.stackCount=(existing.stackCount||1)+1;
+        existing.count     =(existing.count||1)+1;
+        existing.cooldown  =Math.max(def.cooldown*0.4, existing.cooldown*0.82);
     } else {
-        playerWeapons.push({ ...def, lastShot:0, stackCount:1 });
+        playerWeapons.push({...def,lastShot:0,stackCount:1});
     }
     document.getElementById('weapon-pick').classList.remove('visible');
-    weaponPickOpen = false;
+    weaponPickOpen=false;
     updateWeaponBar();
 }
 
 function updateWeaponBar() {
-    const bar = document.getElementById('weapon-bar');
-    bar.innerHTML = '';
-    playerWeapons.forEach((w,i) => {
-        const slot = document.createElement('div');
-        slot.className = 'weapon-slot'+(i===activeWeaponIndex?' active':'');
-        slot.id = `wslot-${i}`;
-  const stack = w.stackCount > 1 ? `<div style="position:absolute;top:3px;right:5px;font-size:11px;color:#80cbc4;font-weight:bold;">x${w.stackCount}</div>` : '';
-        slot.innerHTML = `<div class="icon">${w.icon}</div><div>${w.name}</div>
-                          ${stack}
-                          <div class="cooldown-overlay" id="wcd-${i}"></div>`;
+    const bar=document.getElementById('weapon-bar');
+    bar.innerHTML='';
+    playerWeapons.forEach((w,i)=>{
+        const slot=document.createElement('div');
+        slot.className='weapon-slot'+(i===activeWeaponIndex?' active':'');
+        slot.id=`wslot-${i}`;
+        const stack=w.stackCount>1?`<div style="position:absolute;top:3px;right:5px;font-size:11px;color:#80cbc4;font-weight:bold;">x${w.stackCount}</div>`:'';
+        slot.innerHTML=`<div class="icon">${w.icon}</div><div>${w.name}</div>${stack}
+                        <div class="cooldown-overlay" id="wcd-${i}"></div>`;
         bar.appendChild(slot);
     });
 }
 updateWeaponBar();
 
 function updateWeaponBarCooldowns() {
-    const now = Date.now();
-    playerWeapons.forEach((w,i) => {
-        const cd = document.getElementById(`wcd-${i}`);
-        const sl = document.getElementById(`wslot-${i}`);
-        if (!cd||!sl) return;
-        const frac = Math.max(0, 1-(now-(w.lastShot||0))/w.cooldown);
-        cd.style.height = `${frac*100}%`;
-        sl.className    = 'weapon-slot'+(i===activeWeaponIndex?' active':'');
+    const now=Date.now();
+    playerWeapons.forEach((w,i)=>{
+        const cd=document.getElementById(`wcd-${i}`);
+        const sl=document.getElementById(`wslot-${i}`);
+        if(!cd||!sl) return;
+        const frac=Math.max(0,1-(now-(w.lastShot||0))/w.cooldown);
+        cd.style.height=`${frac*100}%`;
+        sl.className='weapon-slot'+(i===activeWeaponIndex?' active':'');
     });
 }
 
 // ════════════════════════════════════════════════
 //  PARTICLES
 // ════════════════════════════════════════════════
-const particles = [], levelUpParts = [];
+const particles=[], levelUpParts=[];
 
 function spawnHitParticles(wx,wy,color) {
     for(let i=0;i<5;i++){
@@ -1059,7 +1201,7 @@ function updateParticles() {
     [particles,levelUpParts].forEach(arr=>{
         for(let i=arr.length-1;i>=0;i--){
             const p=arr[i];
-            p.x+=p.vx; p.y+=p.vy; p.vx*=0.91; p.vy*=0.91; p.life--;
+            p.x+=p.vx;p.y+=p.vy;p.vx*=0.91;p.vy*=0.91;p.life--;
             if(p.life<=0) arr.splice(i,1);
         }
     });
@@ -1069,7 +1211,7 @@ function drawParticles(arr) {
         const{x:sx,y:sy}=worldToScreen(p.x,p.y);
         ctx.globalAlpha=p.life/p.maxLife;
         ctx.fillStyle=p.color;
-        ctx.beginPath(); ctx.arc(sx,sy,p.radius*(p.life/p.maxLife),0,Math.PI*2); ctx.fill();
+        ctx.beginPath();ctx.arc(sx,sy,p.radius*(p.life/p.maxLife),0,Math.PI*2);ctx.fill();
     }
     ctx.globalAlpha=1;
 }
@@ -1079,41 +1221,39 @@ function drawParticles(arr) {
 // ════════════════════════════════════════════════
 function drawBar(x,y,w,h,frac,colorFill,colorBg) {
     ctx.fillStyle=colorBg;
-    ctx.beginPath(); ctx.roundRect(x-w/2,y,w,h,3); ctx.fill();
+    ctx.beginPath();ctx.roundRect(x-w/2,y,w,h,3);ctx.fill();
     if(frac>0){
         ctx.fillStyle=colorFill;
-        ctx.beginPath(); ctx.roundRect(x-w/2,y,w*frac,h,3); ctx.fill();
+        ctx.beginPath();ctx.roundRect(x-w/2,y,w*frac,h,3);ctx.fill();
     }
 }
 
 function drawCrosshair() {
-    const x=mouse.x, y=mouse.y, r=10, g=4;
+    const x=mouse.x,y=mouse.y,r=10,g=4;
     ctx.strokeStyle='rgba(255,255,255,0.85)';
     ctx.lineWidth=1.5;
-    ctx.shadowColor='#000'; ctx.shadowBlur=3;
+    ctx.shadowColor='#000';ctx.shadowBlur=3;
     ctx.beginPath();
-    ctx.moveTo(x-r-g,y); ctx.lineTo(x-g,y);
-    ctx.moveTo(x+g,y);   ctx.lineTo(x+r+g,y);
-    ctx.moveTo(x,y-r-g); ctx.lineTo(x,y-g);
-    ctx.moveTo(x,y+g);   ctx.lineTo(x,y+r+g);
+    ctx.moveTo(x-r-g,y);ctx.lineTo(x-g,y);
+    ctx.moveTo(x+g,y);  ctx.lineTo(x+r+g,y);
+    ctx.moveTo(x,y-r-g);ctx.lineTo(x,y-g);
+    ctx.moveTo(x,y+g);  ctx.lineTo(x,y+r+g);
     ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,0.9)';
-    ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
     ctx.shadowBlur=0;
 }
 
 // ════════════════════════════════════════════════
 //  SPAWN LOOP
 // ════════════════════════════════════════════════
-let spawnTimer = 0;
+let spawnTimer=0;
 function handleSpawning() {
-    const interval = Math.max(20, 80 - level * 4);  // faster with level
+    const interval=Math.max(15, 70-level*3);
     spawnTimer++;
-    if (spawnTimer >= interval) { spawnTimer=0; spawnEnemy(); }
+    if(spawnTimer>=interval){spawnTimer=0;spawnCluster();}
 }
-
-// Initial fill
-for (let i = 0; i < 30; i++) spawnEnemy();
+for(let i=0;i<8;i++) spawnCluster();
 
 // ════════════════════════════════════════════════
 //  MAIN LOOP
@@ -1122,7 +1262,7 @@ function gameLoop() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawBackground();
 
-    if (!weaponPickOpen) {
+    if(!weaponPickOpen){
         updatePlayer();
         handleAutoFire();
         updateBullets();

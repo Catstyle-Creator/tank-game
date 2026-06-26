@@ -304,11 +304,11 @@ const WEAPON_DEFS = {
         cooldown:1200, damage:5, bulletSpeed:28, bulletRadius:4,
         bulletColor:'#00e5ff', range:320, spread:0, count:1, type:'rail'
     },
-    rocket: {
+ rocket: {
         id:'rocket', name:'Rockets', icon:'🚀',
         desc:'Slow projectile.\nExplodes on impact.',
-        cooldown:1000, damage:3, bulletSpeed:5, bulletRadius:7,
-        bulletColor:'#ff7043', range:140, spread:0, count:1,
+        cooldown:1000, damage:3, bulletSpeed:11, bulletRadius:7,
+        bulletColor:'#ff7043', range:160, spread:0, count:1,
         explosionRadius:80, type:'rocket'
     },
     machinegun: {
@@ -730,7 +730,9 @@ function updateBullets() {
         for (let j = enemies.length-1; j >= 0; j--) {
             const e  = enemies[j];
             const dx = b.x - e.x, dy = b.y - e.y;
-            if (Math.hypot(dx,dy) < e.radius + b.radius) {
+      // Rail hitbox grows with beam width
+        const railBonus = b.type === 'rail' ? (b.beamWidth || 8) * 0.55 : 0;
+        if (Math.hypot(dx,dy) < e.radius + b.radius + railBonus) {
                 // Rail: only damage each enemy once per shot
                 if (b.type === 'rail') {
                     if (!b.hitEnemies.has(j)) {
@@ -867,24 +869,24 @@ const ENEMY_DEFS = [
     // Tier 4
     { shape:'diamond',   sides:4, radius:30, color:'#ab47bc', hpMax:35,  orbs:9,  tier:4 },
     { shape:'pentagon2', sides:5, radius:34, color:'#8e24aa', hpMax:42,  orbs:11, tier:4 },
-    // Tier 5
-    { shape:'hexL',      sides:6, radius:38, color:'#ec407a', hpMax:60,  orbs:15, tier:5 },
-    { shape:'octL',      sides:8, radius:40, color:'#d81b60', hpMax:70,  orbs:18, tier:5 },
-    // Tier 6
-    { shape:'hex6',      sides:6, radius:44, color:'#ff1744', hpMax:90,  orbs:22, tier:6 },
-    { shape:'oct6',      sides:8, radius:46, color:'#d50000', hpMax:105, orbs:26, tier:6 },
-    // Tier 7
-    { shape:'pent7',     sides:5, radius:50, color:'#bf360c', hpMax:130, orbs:32, tier:7 },
-    { shape:'hept7',     sides:7, radius:52, color:'#e64a19', hpMax:150, orbs:36, tier:7 },
-    // Tier 8
-    { shape:'hex8',      sides:6, radius:56, color:'#4a148c', hpMax:180, orbs:42, tier:8 },
-    { shape:'oct8',      sides:8, radius:58, color:'#6a1b9a', hpMax:210, orbs:48, tier:8 },
-    // Tier 9
-    { shape:'hex9',      sides:6, radius:62, color:'#1a237e', hpMax:260, orbs:56, tier:9 },
-    { shape:'oct9',      sides:8, radius:64, color:'#283593', hpMax:300, orbs:64, tier:9 },
-    // Tier 10
-    { shape:'boss10a',   sides:6, radius:72, color:'#880e4f', hpMax:450, orbs:90, tier:10 },
-    { shape:'boss10b',   sides:8, radius:76, color:'#b71c1c', hpMax:500, orbs:100,tier:10 },
+   // Tier 5 — electric blue/teal, larger
+    { shape:'hexL',  sides:6, radius:44, color:'#00e5ff', hpMax:70,  orbs:28,  tier:5 },
+    { shape:'octL',  sides:8, radius:46, color:'#00b8d4', hpMax:82,  orbs:32,  tier:5 },
+    // Tier 6 — toxic green/lime, larger
+    { shape:'hex6',  sides:6, radius:52, color:'#76ff03', hpMax:105, orbs:42,  tier:6 },
+    { shape:'tri6',  sides:3, radius:54, color:'#64dd17', hpMax:120, orbs:48,  tier:6 },
+    // Tier 7 — deep orange/gold, larger
+    { shape:'pent7', sides:5, radius:58, color:'#ffab00', hpMax:155, orbs:60,  tier:7 },
+    { shape:'hept7', sides:7, radius:60, color:'#ff6d00', hpMax:175, orbs:68,  tier:7 },
+    // Tier 8 — deep purple/magenta, larger
+    { shape:'hex8',  sides:6, radius:65, color:'#ea80fc', hpMax:215, orbs:82,  tier:8 },
+    { shape:'oct8',  sides:8, radius:68, color:'#e040fb', hpMax:250, orbs:94,  tier:8 },
+    // Tier 9 — dark crimson/blood red, larger
+    { shape:'hex9',  sides:9, radius:72, color:'#ff1744', hpMax:310, orbs:112, tier:9 },
+    { shape:'oct9',  sides:4, radius:75, color:'#d50000', hpMax:360, orbs:128, tier:9 },
+    // Tier 10 — near black with white/silver tint, massive
+    { shape:'boss10a', sides:7, radius:85, color:'#eceff1', hpMax:550, orbs:200, tier:10 },
+    { shape:'boss10b', sides:5, radius:90, color:'#b0bec5', hpMax:620, orbs:240, tier:10 },
 ];
 
 const enemies   = [];
@@ -1053,8 +1055,11 @@ function updateOrbs() {
         const o=orbs[i];
         o.pulse+=0.08;
         const dx=player.x-o.x, dy=player.y-o.y, d=Math.hypot(dx,dy);
-        if (d<130) { o.x+=(dx/d)*3.8; o.y+=(dy/d)*3.8; }
-        if (d<38)  collectOrb(i);
+        // Attract range and speed scales slightly with level
+        const attractRange = 130 + level * 4;
+        const attractSpeed = 3.8 + level * 0.15;
+        if (d<attractRange) { o.x+=(dx/d)*attractSpeed; o.y+=(dy/d)*attractSpeed; }
+        if (d<42)  collectOrb(i);
     }
 }
 
@@ -1249,11 +1254,11 @@ function drawCrosshair() {
 // ════════════════════════════════════════════════
 let spawnTimer=0;
 function handleSpawning() {
-    const interval=Math.max(15, 70-level*3);
+    const interval=Math.max(10, 45-level*2);
     spawnTimer++;
     if(spawnTimer>=interval){spawnTimer=0;spawnCluster();}
 }
-for(let i=0;i<8;i++) spawnCluster();
+for(let i=0;i<18;i++) spawnCluster();
 
 // ════════════════════════════════════════════════
 //  MAIN LOOP

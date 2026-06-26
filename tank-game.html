@@ -322,8 +322,8 @@ const WEAPON_DEFS = {
     railgun: {
         id:'railgun', name:'Railgun', icon:'⚡',
         desc:'High damage.\nSlow reload.\nPierces enemies.',
-        cooldown:1200, damage:5, bulletSpeed:22, bulletRadius:4,
-        bulletColor:'#00e5ff', range:120, spread:0, count:1, type:'rail'
+        cooldown:1200, damage:5, bulletSpeed:28, bulletRadius:4,
+        bulletColor:'#00e5ff', range:320, spread:0, count:1, type:'rail'
     },
     rocket: {
         id:'rocket', name:'Rockets', icon:'🚀',
@@ -614,8 +614,9 @@ function handleAutoFire() {
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        b.trail.push({ x: b.x, y: b.y });
-        if (b.trail.length > (b.type === 'rail' ? 14 : 7)) b.trail.shift();
+  b.trail.push({ x: b.x, y: b.y });
+        // Rail keeps full trail back to origin, others keep short trail
+        if (b.type !== 'rail' && b.trail.length > 7) b.trail.shift();
         b.x += b.vx; b.y += b.vy;
         b.life--;
         if (b.life <= 0) {
@@ -651,6 +652,57 @@ function triggerExplosion(wx, wy, radius, damage) {
 
 function drawBullets() {
     for (const b of bullets) {
+
+        // ── Railgun beam — drawn as a long fading line from origin to current pos ──
+        if (b.type === 'rail') {
+            const origin = b.trail.length > 0 ? b.trail[0] : { x: b.x, y: b.y };
+            const { x: ox, y: oy } = worldToScreen(origin.x, origin.y);
+            const { x: hx, y: hy } = worldToScreen(b.x, b.y);
+
+            const lifeFrac = b.life / b.maxLife;
+
+            // Outer wide glow
+            const beamGrad = ctx.createLinearGradient(ox, oy, hx, hy);
+            beamGrad.addColorStop(0, `rgba(0,229,255,0)`);
+            beamGrad.addColorStop(0.15, `rgba(0,229,255,${0.18 * lifeFrac})`);
+            beamGrad.addColorStop(1,  `rgba(0,229,255,${0.85 * lifeFrac})`);
+            ctx.save();
+            ctx.strokeStyle = beamGrad;
+            ctx.lineWidth   = 14;
+            ctx.lineCap     = 'round';
+            ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
+
+            // Mid glow
+            const midGrad = ctx.createLinearGradient(ox, oy, hx, hy);
+            midGrad.addColorStop(0, `rgba(150,240,255,0)`);
+            midGrad.addColorStop(0.2, `rgba(150,240,255,${0.35 * lifeFrac})`);
+            midGrad.addColorStop(1,  `rgba(200,248,255,${0.95 * lifeFrac})`);
+            ctx.strokeStyle = midGrad;
+            ctx.lineWidth   = 5;
+            ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
+
+            // Bright core
+            const coreGrad = ctx.createLinearGradient(ox, oy, hx, hy);
+            coreGrad.addColorStop(0, `rgba(255,255,255,0)`);
+            coreGrad.addColorStop(0.3, `rgba(255,255,255,${0.6 * lifeFrac})`);
+            coreGrad.addColorStop(1,  `rgba(255,255,255,${lifeFrac})`);
+            ctx.strokeStyle = coreGrad;
+            ctx.lineWidth   = 2;
+            ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(hx,hy); ctx.stroke();
+
+            // Leading tip glow burst
+            const tipGrd = ctx.createRadialGradient(hx,hy,0,hx,hy,18*lifeFrac);
+            tipGrd.addColorStop(0, `rgba(255,255,255,${0.9*lifeFrac})`);
+            tipGrd.addColorStop(0.4, `rgba(0,229,255,${0.6*lifeFrac})`);
+            tipGrd.addColorStop(1, `rgba(0,229,255,0)`);
+            ctx.fillStyle = tipGrd;
+            ctx.beginPath(); ctx.arc(hx,hy,18*lifeFrac,0,Math.PI*2); ctx.fill();
+
+            ctx.restore();
+            continue;  // skip normal bullet drawing for rail
+        }
+
+        // Normal bullet trail
         for (let t = 0; t < b.trail.length; t++) {
             const tr = b.trail[t];
             const { x: sx, y: sy } = worldToScreen(tr.x, tr.y);
@@ -662,14 +714,6 @@ function drawBullets() {
         }
         ctx.globalAlpha = 1;
         const { x: sx, y: sy } = worldToScreen(b.x, b.y);
-
-        if (b.type === 'rail') {
-            const grd = ctx.createRadialGradient(sx,sy,0,sx,sy,b.radius*4);
-            grd.addColorStop(0,'rgba(0,229,255,0.9)');
-            grd.addColorStop(1,'rgba(0,229,255,0)');
-            ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.arc(sx,sy,b.radius*4,0,Math.PI*2); ctx.fill();
-        }
         if (b.type === 'rocket') {
             ctx.save(); ctx.translate(sx,sy); ctx.rotate(Math.atan2(b.vy,b.vx));
             ctx.fillStyle = '#ff7043';
@@ -915,9 +959,9 @@ function showWeaponPick() {
     const isFirst  = playerWeapons.length===1 && playerWeapons[0].id==='main_cannon';
     subtitle.textContent = isFirst ? 'Choose your primary weapon type'
                                    : 'Add a new weapon to your arsenal';
-    const available = Object.values(WEAPON_DEFS).filter(
-        w => w.id !== 'main_cannon' && !playerWeapons.find(pw => pw.id===w.id)
-    );
+const available = Object.values(WEAPON_DEFS).filter(
+    w => w.id !== 'main_cannon'
+);
     if (available.length===0) { weaponPickOpen=false; return; }
 
     available.forEach(def => {
@@ -931,9 +975,21 @@ function showWeaponPick() {
 }
 
 function pickWeapon(def) {
-    const isFirst = playerWeapons.length===1 && playerWeapons[0].id==='main_cannon';
-    if (isFirst) playerWeapons[0] = { ...def, lastShot:0 };
-    else         playerWeapons.push({ ...def, lastShot:0 });
+    const isFirst   = playerWeapons.length===1 && playerWeapons[0].id==='main_cannon';
+    const existing  = playerWeapons.find(w => w.id === def.id);
+    if (isFirst) {
+        playerWeapons[0] = { ...def, lastShot:0, stackCount:1 };
+    } else if (existing) {
+        // Stack: increase count, slightly reduce cooldown per stack
+        existing.stackCount = (existing.stackCount || 1) + 1;
+        existing.count      = (existing.count || 1) + 1;
+        existing.cooldown   = Math.max(
+            def.cooldown * 0.4,
+            existing.cooldown * 0.82
+        );
+    } else {
+        playerWeapons.push({ ...def, lastShot:0, stackCount:1 });
+    }
     document.getElementById('weapon-pick').classList.remove('visible');
     weaponPickOpen = false;
     updateWeaponBar();
@@ -946,7 +1002,9 @@ function updateWeaponBar() {
         const slot = document.createElement('div');
         slot.className = 'weapon-slot'+(i===activeWeaponIndex?' active':'');
         slot.id = `wslot-${i}`;
+  const stack = w.stackCount > 1 ? `<div style="position:absolute;top:3px;right:5px;font-size:11px;color:#80cbc4;font-weight:bold;">x${w.stackCount}</div>` : '';
         slot.innerHTML = `<div class="icon">${w.icon}</div><div>${w.name}</div>
+                          ${stack}
                           <div class="cooldown-overlay" id="wcd-${i}"></div>`;
         bar.appendChild(slot);
     });
